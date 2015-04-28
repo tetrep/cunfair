@@ -1,1 +1,1 @@
-./build.sh && ./bin/main.exe ${1}${2}
+./build.sh && ./bin/main.exe ${1}

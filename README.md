@@ -10,6 +10,6 @@ cus i'm biased and think it will be faster
 idk yet
 
 ## todo
-- [ ] rc4 crypto
+- [x] rc4 crypto
 - [ ] threads
-- [ ] bias analysis?
+- [ ] bias analysis
