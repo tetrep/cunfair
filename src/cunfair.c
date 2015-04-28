@@ -72,11 +72,38 @@ int cunfair_get_random_data(char *random_data, size_t data_size) {
   return 0;
 }
 
-int cunfair_count (char *keystream_buffer, long double **keystream_stats) {
+int cunfair_print_stuffs (long double **stuffs) {
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
-    fprintf(stdout, "keystream_stats[%i][%u]\n", i, (unsigned char) keystream_buffer[i]);
-    sleep(1);
-    keystream_stats[i][(unsigned char)keystream_buffer[i]] += 1;
+    fprintf(stdout, "keystream[%i]: %p\n", i, stuffs[i]);
+  }
+
+  return 0;
+}
+
+int cunfair_compile_stats (long double **all_keystream_stats, long double **single_keystream_stats) {
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    for (int j = 0; j < 256; j++) {
+      all_keystream_stats[i][j] += single_keystream_stats[i][j];
+    }
+  }
+
+  return 0;
+}
+
+int cunfair_count (char *keystream_buffer, long double **keystream_stats) {
+  keystream_stats[1][1] = 5.0;
+  printf("PLEASE OMG WHY %F\n", keystream_stats[1][1]);
+  abort();
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    //keystream_stats[i][1] = 2.0;
+    //fprintf(stderr, "srsly tho... %f\n", keystream_stats[i][1]);
+    //fprintf(stdout, "keystream[%i][%u]: %F\n", i, (unsigned char) keystream_buffer[i], keystream_stats[i][(unsigned char)keystream_buffer[i]]);
+    fprintf(stdout, "keystream[%i]: %p\n", i, keystream_stats[i]);
+    fprintf(stdout, "keystream_buffer[%i]: %u\n", i, (unsigned char) keystream_buffer[i]);
+    keystream_stats[i][(unsigned char)keystream_buffer[i]] = 2.0;
+    printf("wtf!!!! %F\n", keystream_stats[i][(unsigned char)keystream_buffer[i]]);
+    fprintf(stdout, "keystream_stats[%i][%u]: %f\n", i, (unsigned char) keystream_buffer[i], keystream_stats[i][(unsigned char)keystream_buffer[i]]);
+    fprintf(stdout, "=====\n");
   }
 
   return 0;
@@ -112,7 +139,9 @@ int cunfair_rc4_gen (int num_samples, long double **keystream_stats) {
     // */
   }
 
-  fprintf(stderr, "we made it!\n");
+  // should we bother?
+  fprintf(stdout, "totes memory safe\n");
+  free(random_data);
 
   return 0;
 }
@@ -126,37 +155,28 @@ void *wrap_cunfair_rc4_gen (void *arg) {
   if (NULL == (keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
     abort();
   }
+  // init long double pointers
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
-    // cast to void * and add offset
-    keystream_stats[i] = (long double *)(((char *)keystream_stats) + i*(256*sizeof(long double)));
+    keystream_stats[i] = (long double *) (((char *) keystream_stats) + (i * 256 * sizeof(long double)));
   }
+  cunfair_print_stuffs(keystream_stats);
 
   cunfair_rc4_gen(num_samples, keystream_stats);
 
   return keystream_stats;
 }
 
-int cunfair_compile_stats (long double **all_keystream_stats, long double **single_keystream_stats) {
-  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
-    for (int j = 0; j < 256; j++) {
-      all_keystream_stats[i][j] += single_keystream_stats[i][j];
-    }
-  }
-
-  return 0;
-}
-
 int cunfair_bias (long double **all_keystream_stats, int num_samples_int) {
   long double num_samples = num_samples_int;
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
     for (int j = 0; j < 256; j++) {
-      // probably superfluous long double(y) goodness but whatevs
-      all_keystream_stats[i][j] = (((long double) all_keystream_stats[i][j])/num_samples);
+      all_keystream_stats[i][j] = all_keystream_stats[i][j]/num_samples;
     }
   }
 
   return 0;
 }
+
 
 void cunfair_print_usage (char *name) {
   fprintf(stderr, "usage: %s [num_samples]\n", name);
@@ -180,10 +200,9 @@ int main (int argc, char *argv[]) {
     abort();
   }
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
-    // cast to void * and add offset
-    all_keystream_stats[i] = (long double *)(((char *)all_keystream_stats) + i*KEYSTREAM_SIZE);
+    all_keystream_stats[i] = (long double *) (((char *) all_keystream_stats) + (i * 256 * sizeof(long double)));
   }
-  cunfair_bias(all_keystream_stats, 1);
+  //cunfair_print_stuffs(all_keystream_stats);
 
   num_samples = atoi(argv[1]);
 
@@ -199,6 +218,7 @@ int main (int argc, char *argv[]) {
   for (int i = 0; i < num_cpu; i++) {
     pthread_join(childs[i], (void *)&single_keystream_stats);
     //cunfair_compile_stats(all_keystream_stats, single_keystream_stats);
+    //free(single_keystream_stats);
   }
 
   // calculate bias
