@@ -7,9 +7,10 @@
 #include <pthread.h>
 
 #define KEYSTREAM_SIZE 256
+#define KEYSTREAM_STATS_SIZE KEYSTREAM_SIZE*256*sizeof(long double)
 #define KEY_SIZE 16
 
-int cunfair_rc4_keystream(char *key, unsigned char *keystream_buffer) {
+int cunfair_rc4_keystream(char *key, char *keystream_buffer) {
   // our rc4 array
   unsigned char s[256];
   // our index for iterating across the internal state
@@ -66,11 +67,23 @@ int cunfair_get_random_data(char *random_data, size_t data_size) {
     abort();
   }
 
+  close(fd);
+
   return 0;
 }
 
-int cunfair_rc4_gen (int num_samples) {
-  unsigned char keystream_buffer[KEYSTREAM_SIZE];
+int cunfair_count (char *keystream_buffer, long double **keystream_stats) {
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    fprintf(stdout, "keystream_stats[%i][%u]\n", i, (unsigned char) keystream_buffer[i]);
+    sleep(1);
+    keystream_stats[i][(unsigned char)keystream_buffer[i]] += 1;
+  }
+
+  return 0;
+}
+
+int cunfair_rc4_gen (int num_samples, long double **keystream_stats) {
+  char keystream_buffer[KEYSTREAM_SIZE];
   char *key = NULL;
   char *random_data = NULL;
   int i = 0;
@@ -86,6 +99,9 @@ int cunfair_rc4_gen (int num_samples) {
     cunfair_rc4_keystream(key, keystream_buffer);
     key += KEY_SIZE;
 
+    // count what values occured at what locations
+    cunfair_count(keystream_buffer, keystream_stats);
+
     /* print out our keystream
     fprintf(stderr, "keystream[%.4i]: ", i);
     int j = 0;
@@ -94,17 +110,52 @@ int cunfair_rc4_gen (int num_samples) {
     }
     fprintf(stderr, "\n");
     // */
-  
-    // count occurances
   }
+
+  fprintf(stderr, "we made it!\n");
 
   return 0;
 }
 
 void *wrap_cunfair_rc4_gen (void *arg) {
-  cunfair_rc4_gen(*(int *)arg);
+  int num_samples = -1;
+  long double **keystream_stats = NULL;
 
-  return NULL;
+  num_samples = *(int *)arg;
+
+  if (NULL == (keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
+    abort();
+  }
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    // cast to void * and add offset
+    keystream_stats[i] = (long double *)(((char *)keystream_stats) + i*(256*sizeof(long double)));
+  }
+
+  cunfair_rc4_gen(num_samples, keystream_stats);
+
+  return keystream_stats;
+}
+
+int cunfair_compile_stats (long double **all_keystream_stats, long double **single_keystream_stats) {
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    for (int j = 0; j < 256; j++) {
+      all_keystream_stats[i][j] += single_keystream_stats[i][j];
+    }
+  }
+
+  return 0;
+}
+
+int cunfair_bias (long double **all_keystream_stats, int num_samples_int) {
+  long double num_samples = num_samples_int;
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    for (int j = 0; j < 256; j++) {
+      // probably superfluous long double(y) goodness but whatevs
+      all_keystream_stats[i][j] = (((long double) all_keystream_stats[i][j])/num_samples);
+    }
+  }
+
+  return 0;
 }
 
 void cunfair_print_usage (char *name) {
@@ -120,20 +171,38 @@ int main (int argc, char *argv[]) {
 
   int num_samples = -1;
   int num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
+  num_cpu = 1;
   pthread_t childs[num_cpu];
+  long double **single_keystream_stats = NULL;
+  long double **all_keystream_stats = NULL;
+
+  if (NULL == (all_keystream_stats = malloc(KEYSTREAM_STATS_SIZE))) {
+    abort();
+  }
+  for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+    // cast to void * and add offset
+    all_keystream_stats[i] = (long double *)(((char *)all_keystream_stats) + i*KEYSTREAM_SIZE);
+  }
+  cunfair_bias(all_keystream_stats, 1);
 
   num_samples = atoi(argv[1]);
 
   fprintf(stdout, "num_samples: %.4i\n", num_samples);
+  // translate total number of samples to samples per thread
   num_samples = num_samples/num_cpu;
 
+  // create threads to generate rc4 output
   for (int i = 0; i < num_cpu; i++) {
     pthread_create(&childs[i], NULL, wrap_cunfair_rc4_gen, &num_samples);
   }
+  // wait for threads to join, process their counts
   for (int i = 0; i < num_cpu; i++) {
-    pthread_join(childs[i], NULL);
+    pthread_join(childs[i], (void *)&single_keystream_stats);
+    //cunfair_compile_stats(all_keystream_stats, single_keystream_stats);
   }
 
-  //return cunfair_rc4_gen(num_samples);
+  // calculate bias
+  //cunfair_bias(all_keystream_stats, num_samples*num_cpu);
+
   return 0;
 }

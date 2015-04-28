@@ -1,1 +1,1 @@
-./build.sh && ./bin/main.exe ${1}
+./build.sh && valgrind ./bin/main.exe ${1}
