@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <pthread.h>
+
 #define KEYSTREAM_SIZE 256
 #define KEY_SIZE 16
 
@@ -52,7 +54,6 @@ int cunfair_rc4_keystream(char *key, unsigned char *keystream_buffer) {
   return 0;
 }
 
-// TODO macro error check
 int cunfair_get_random_data(char *random_data, size_t data_size) {
   int fd = -1;
 
@@ -100,6 +101,12 @@ int cunfair_rc4_gen (int num_samples) {
   return 0;
 }
 
+void *wrap_cunfair_rc4_gen (void *arg) {
+  cunfair_rc4_gen(*(int *)arg);
+
+  return NULL;
+}
+
 void cunfair_print_usage (char *name) {
   fprintf(stderr, "usage: %s [num_samples]\n", name);
 }
@@ -112,10 +119,21 @@ int main (int argc, char *argv[]) {
   }
 
   int num_samples = -1;
+  int num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
+  pthread_t childs[num_cpu];
 
   num_samples = atoi(argv[1]);
 
   fprintf(stdout, "num_samples: %.4i\n", num_samples);
+  num_samples = num_samples/num_cpu;
 
-  return cunfair_rc4_gen(num_samples);
+  for (int i = 0; i < num_cpu; i++) {
+    pthread_create(&childs[i], NULL, wrap_cunfair_rc4_gen, &num_samples);
+  }
+  for (int i = 0; i < num_cpu; i++) {
+    pthread_join(childs[i], NULL);
+  }
+
+  //return cunfair_rc4_gen(num_samples);
+  return 0;
 }

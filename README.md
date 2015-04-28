@@ -11,5 +11,7 @@ idk yet
 
 ## todo
 - [x] rc4 crypto
-- [ ] threads
+- [x] threads
 - [ ] bias analysis
+- [ ] macros for error checking
+- [ ] macros for unrolling loops
