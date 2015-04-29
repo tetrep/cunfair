@@ -1,1 +1,1 @@
-clang -Wall -Wextra -Wpedantic -O0 -g src/cunfair.c -o bin/main.exe
+clang -Wall -Wextra -Wpedantic -g -O0 src/cunfair.c -o bin/main.exe
