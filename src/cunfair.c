@@ -92,6 +92,7 @@ int cunfair_count (char *keystream_buffer, char *keystream_stats) {
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
     // increment number (at ascii character value in row) by 1
     *(KEYSTREAM_STATS_ELEM_TYPE *)(keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * (unsigned char)keystream_buffer[i])) += 1;
+    //printf("keystream_stats[%i][%i]: %Lf\n", i, (unsigned char)keystream_buffer[i], *(KEYSTREAM_STATS_ELEM_TYPE *)(keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * (unsigned char)keystream_buffer[i])));
   }
 
   return 0;
@@ -132,6 +133,7 @@ void *wrap_cunfair_rc4_gen (void *arg) {
   if (NULL == (keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
     abort();
   }
+  memset(keystream_stats, '\0', KEYSTREAM_STATS_SIZE);
 
   cunfair_rc4_gen(num_samples, keystream_stats);
 
@@ -158,19 +160,21 @@ void cunfair_print_json (char *all_keystream_stats, int num_samples) {
       for (int i = 0; i < KEYSTREAM_SIZE; i++) {
         printf("[");
         for (int j = 0; j < 256; j++) {
-          printf("%f,", (KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
+          printf("%Lf,", *(KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
         }
         printf("],");
       }
       printf("],");
-    // calculate probability before we can print it
-    cunfair_bias(all_keystream_stats, num_samples);
-    printf("Probability");
+
+  // calculate probability before we can print it
+  cunfair_bias(all_keystream_stats, num_samples);
+
+    printf("Probability: ");
       printf("[");
       for (int i = 0; i < KEYSTREAM_SIZE; i++) {
         printf("[");
         for (int j = 0; j < 256; j++) {
-          printf("%f,", (KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
+          printf("%Lf,", *(KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
         }
         printf("],");
       }
@@ -218,10 +222,8 @@ int main (int argc, char *argv[]) {
   // "reset" num_samples
   num_samples = num_samples*num_cpu;
 
-  // calculate bias (we'll do this in print_json so we can keep the overall count)
-  //cunfair_bias(all_keystream_stats, num_samples);
-
   // make a pretty JSON (html too stronk)
+  // calculates bias too so we can reuse memory for count + bias
   cunfair_print_json(all_keystream_stats, num_samples);
 
   return 0;
