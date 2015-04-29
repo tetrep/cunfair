@@ -78,21 +78,12 @@ int cunfair_get_random_data(char *random_data, size_t data_size) {
 }
 
 int cunfair_compile_stats (char *all_keystream_stats, char *single_keystream_stats) {
-  char *backup = all_keystream_stats;
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
     for (int j = 0; j < 256; j++) {
       // print out our "progress"
-      fprintf(stdout, "%p: %li\n", all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j), (all_keystream_stats+(KEYSTREAM_STATS_SIZE))-(all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j)));
-      // because this makes sense...
-      size_t mem_size = 0;
-      if (0 == (mem_size = malloc_size(all_keystream_stats))) {
-        fprintf(stderr, "our pointer has no memory :(\n");
-        fprintf(stderr, "old vs. new\n");
-        fprintf(stderr, "%p vs. %p\n", backup, all_keystream_stats);
-        abort();
-      }
-      // */
+      //fprintf(stdout, "%p: %li\n", all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j), (all_keystream_stats+(KEYSTREAM_STATS_SIZE))-(all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j)));
       //fprintf(stdout, "%p\n", (single_keystream_stats+(KEYSTREAM_STATS_SIZE))-(single_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j)));
+
       *(KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)) += 1;
         //*(KEYSTREAM_STATS_ELEM_TYPE *)(single_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j));
     }
