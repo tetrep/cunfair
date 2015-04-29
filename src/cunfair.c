@@ -6,8 +6,6 @@
 
 #include <pthread.h>
 
-#include <malloc/malloc.h>
-
 #define KEYSTREAM_SIZE 256
 #define KEYSTREAM_STATS_ELEM_TYPE long double
 #define KEYSTREAM_STATS_ELEM_SIZE sizeof(KEYSTREAM_STATS_ELEM_TYPE)
