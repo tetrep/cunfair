@@ -7,10 +7,12 @@
 #include <pthread.h>
 
 #define KEYSTREAM_SIZE 256
+
 #define KEYSTREAM_STATS_ELEM_TYPE long double
 #define KEYSTREAM_STATS_ELEM_SIZE sizeof(KEYSTREAM_STATS_ELEM_TYPE)
 #define KEYSTREAM_STATS_ROW_SIZE 256*KEYSTREAM_STATS_ELEM_SIZE
 #define KEYSTREAM_STATS_SIZE KEYSTREAM_SIZE*KEYSTREAM_STATS_ROW_SIZE
+
 #define KEY_SIZE 16
 
 int cunfair_rc4_keystream(char *key, char *keystream_buffer) {
@@ -114,15 +116,6 @@ int cunfair_rc4_gen (int num_samples, char *keystream_stats) {
 
     // count what values occured at what locations
     cunfair_count(keystream_buffer, keystream_stats);
-
-    /* print out our keystream
-    fprintf(stderr, "keystream[%.4i]: ", i);
-    int j = 0;
-    for (j = 0; j < KEYSTREAM_SIZE; j++) {
-      fprintf(stderr, "%02X", keystream_buffer[j]);
-    }
-    fprintf(stderr, "\n");
-    // */
   }
 
   //free(random_data); // do we even care?
@@ -156,6 +149,34 @@ int cunfair_bias (char *all_keystream_stats, int num_samples_in) {
   return 0;
 }
 
+void cunfair_print_json (char *all_keystream_stats, int num_samples) {
+  printf("STREAMER={");
+    printf("Samples: %i,", num_samples);
+    printf("Length: 256,");
+    printf("Count: ");
+      printf("[");
+      for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+        printf("[");
+        for (int j = 0; j < 256; j++) {
+          printf("%f,", (KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
+        }
+        printf("],");
+      }
+      printf("],");
+    // calculate probability before we can print it
+    cunfair_bias(all_keystream_stats, num_samples);
+    printf("Probability");
+      printf("[");
+      for (int i = 0; i < KEYSTREAM_SIZE; i++) {
+        printf("[");
+        for (int j = 0; j < 256; j++) {
+          printf("%f,", (KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats+(i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)));
+        }
+        printf("],");
+      }
+      printf("]");
+  printf("};\n");
+}
 
 void cunfair_print_usage (char *name) {
   fprintf(stderr, "usage: %s [num_samples]\n", name);
@@ -180,7 +201,6 @@ int main (int argc, char *argv[]) {
 
   num_samples = atoi(argv[1]);
 
-  fprintf(stdout, "num_samples: %.4i\n", num_samples);
   // translate total number of samples to samples per thread
   num_samples = num_samples/num_cpu;
 
@@ -195,8 +215,14 @@ int main (int argc, char *argv[]) {
     //free(single_keystream_stats); // do we even care?
   }
 
-  // calculate bias
-  cunfair_bias(all_keystream_stats, num_samples*num_cpu);
+  // "reset" num_samples
+  num_samples = num_samples*num_cpu;
+
+  // calculate bias (we'll do this in print_json so we can keep the overall count)
+  //cunfair_bias(all_keystream_stats, num_samples);
+
+  // make a pretty JSON (html too stronk)
+  cunfair_print_json(all_keystream_stats, num_samples);
 
   return 0;
 }
