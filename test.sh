@@ -1,1 +1,1 @@
-time ./run.sh 1000
+time ./run.sh 100000

@@ -78,12 +78,8 @@ int cunfair_get_random_data(char *random_data, size_t data_size) {
 int cunfair_compile_stats (char *all_keystream_stats, char *single_keystream_stats) {
   for (int i = 0; i < KEYSTREAM_SIZE; i++) {
     for (int j = 0; j < 256; j++) {
-      // print out our "progress"
-      //fprintf(stdout, "%p: %li\n", all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j), (all_keystream_stats+(KEYSTREAM_STATS_SIZE))-(all_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j)));
-      //fprintf(stdout, "%p\n", (single_keystream_stats+(KEYSTREAM_STATS_SIZE))-(single_keystream_stats+(i*KEYSTREAM_STATS_ROW_SIZE)+(KEYSTREAM_STATS_ELEM_SIZE*j)));
-
-      *(KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)) += 1;
-        //*(KEYSTREAM_STATS_ELEM_TYPE *)(single_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j));
+      *(KEYSTREAM_STATS_ELEM_TYPE *)(all_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j)) +=
+        *(KEYSTREAM_STATS_ELEM_TYPE *)(single_keystream_stats + (i * KEYSTREAM_STATS_ROW_SIZE) + (KEYSTREAM_STATS_ELEM_SIZE * j));
     }
   }
 
@@ -174,12 +170,11 @@ int main (int argc, char *argv[]) {
 
   int num_samples = -1;
   int num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
-  num_cpu = 1;
   pthread_t childs[num_cpu];
   char *single_keystream_stats = NULL;
   char *all_keystream_stats = NULL;
 
-  if (NULL == (all_keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 0))) {
+  if (NULL == (all_keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
     abort();
   }
 
@@ -201,7 +196,7 @@ int main (int argc, char *argv[]) {
   }
 
   // calculate bias
-  //cunfair_bias(all_keystream_stats, num_samples*num_cpu);
+  cunfair_bias(all_keystream_stats, num_samples*num_cpu);
 
   return 0;
 }
