@@ -130,7 +130,7 @@ void *wrap_cunfair_rc4_gen (void *arg) {
 
   num_samples = *(int *)arg;
 
-  if (NULL == (keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
+  if (NULL == (keystream_stats = calloc(1, KEYSTREAM_STATS_SIZE))) {
     abort();
   }
   memset(keystream_stats, '\0', KEYSTREAM_STATS_SIZE);
@@ -199,7 +199,7 @@ int main (int argc, char *argv[]) {
   char *single_keystream_stats = NULL;
   char *all_keystream_stats = NULL;
 
-  if (NULL == (all_keystream_stats = calloc(KEYSTREAM_STATS_SIZE, 1))) {
+  if (NULL == (all_keystream_stats = calloc(1, KEYSTREAM_STATS_SIZE))) {
     abort();
   }
 
